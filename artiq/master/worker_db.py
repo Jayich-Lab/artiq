@@ -111,6 +111,7 @@ class DatasetManager:
         self._broadcaster = Notifier(dict())
         self.local = dict()
         self.archive = dict()
+        self.attributes = dict()
 
         self.ddb = ddb
         self._broadcaster.publish = ddb.update
@@ -168,6 +169,9 @@ class DatasetManager:
             self.archive[key] = data
         return data
 
+    def set_attribute(self, key, value):
+        self.attributes[key] = value
+
     def write_hdf5(self, f):
         datasets_group = f.create_group("datasets")
         for k, v in self.local.items():
@@ -176,6 +180,9 @@ class DatasetManager:
         archive_group = f.create_group("archive")
         for k, v in self.archive.items():
             _write(archive_group, k, v)
+
+        for k, v in self.attributes.items():
+            f[k] = v
 
 
 def _write(group, k, v):

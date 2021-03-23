@@ -352,6 +352,11 @@ class HasEnvironment:
         self.__dataset_mgr.set(key, value, broadcast, persist, archive)
 
     @rpc(flags={"async"})
+    def set_dataset_attribute(self, key, value):
+        """Sets an attribute in a dataset."""
+        self.__dataset_mgr.set_attribute(key, value)
+
+    @rpc(flags={"async"})
     def mutate_dataset(self, key, index, value):
         """Mutate an existing dataset at the given index (e.g. set a value at
         a given position in a NumPy array)
