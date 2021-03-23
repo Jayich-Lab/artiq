@@ -11,6 +11,9 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from artiq.gui.tools import LayoutWidget
 import logging
 from twisted.internet.defer import inlineCallbacks
+import importlib
+import sys
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +25,20 @@ types = ["parameter",
          "selection_simple",
          "bool",
          "spectrum_sensitivity",  # Not currently being used?
-      #  "string", fails when using python3 client but python2 pylabrad
+         "string",
          "int_list"]
 
 class ParameterEditorDock(QtWidgets.QDockWidget):
 
-    def __init__(self, acxn=None, name="Parameter Editor", accessed_params=None, expand_accessed_params=True):
+    def __init__(self, acxn=None, name="Parameter Editor", accessed_params=None, expand_accessed_params=True, explorer=None):
         QtWidgets.QDockWidget.__init__(self, name)
         self.expand_accessed_params = expand_accessed_params
         self.acxn = acxn if acxn else connection()
         self.accessed_params = accessed_params
+        if explorer is None:
+            raise Exception("Explorer cannot be None")
+        self.explorer = explorer
+        self.explorer.el.selectionModel().selectionChanged.connect(self.experiment_selection_changed)
         self.setObjectName(name.replace(" ", "_"))
         self.setFeatures(QtWidgets.QDockWidget.DockWidgetMovable |
                          QtWidgets.QDockWidget.DockWidgetFloatable)
@@ -93,6 +100,7 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
                 size.setHeight(15)
                 child.setSizeHint(0, size)
                 child.setBackground(1, QtGui.QColor(248, 248, 248))
+                child.widget_content = _child
                 self.table.setItemWidget(child, 1, _child)
                 num_children += 1
                 self.param_widget_items[region_index][collection, param] = _child
@@ -211,6 +219,7 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
         editAction = menu.addAction(self.tr("Edit Parameter"))
         editAction.triggered.connect(self.on_edit_action)
         newparamAction = menu.addAction(self.tr("New Parameter"))
+        newparamAction.setEnabled(False)
         newparamAction.triggered.connect(self.on_newparam_action)
         saveparamsAction = menu.addAction(self.tr("Save Parameters to Registry"))
         saveparamsAction.triggered.connect(self.on_saveparams_action)
@@ -234,7 +243,7 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
         r.cd("", "Servers", "Parameter Vault", collection)
         item_info = r.get(name)
         self.edit_menu = editInputMenu(collection, name, item_info,
-                                       cxn, self)
+                                       cxn, self, sitem)
         self.edit_menu.show()
 
     def on_newparam_action(self):
@@ -257,6 +266,10 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
         pass
         # p = yield self.acxn.parametervault
         # yield p.reload_parameters()
+
+    def experiment_selection_changed(self, selected, deselected):
+        """TO DO: implement showing dynamic parameters."""
+        pass
 
     def closeEvent(self, event):
         event.ignore()
@@ -287,7 +300,7 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
         self.table.verticalScrollBar().setSliderPosition(state["scroll"])
 
 class editInputMenu(QtWidgets.QDialog):
-    def __init__(self, collection, name, item, cxn, parent=None):
+    def __init__(self, collection, name, item, cxn, parent=None, parent_editor=None):
         super(editInputMenu, self).__init__(parent)
         type_ = item[0]
         self.cxn = cxn
@@ -295,6 +308,7 @@ class editInputMenu(QtWidgets.QDialog):
         self.collection = collection
         self.item = item
         self.parent = parent
+        self.parent_editor = parent_editor
         self.setWindowTitle("Edit: {}.{}".format(collection,
                                                  name
                                                  ))
@@ -305,7 +319,7 @@ class editInputMenu(QtWidgets.QDialog):
         self.ok.clicked.connect(self.on_ok_pressed)
         okLayout.addWidget(self.ok)
         global types
-        if type_ in ["bool", "selection_simple"]:
+        if type_ in ["bool", "string", "selection_simple"]:
             layout.addWidget(QtWidgets.QLabel("Nothing to edit."), 0, 0)
 
         elif type_ not in types:
@@ -328,6 +342,7 @@ class editInputMenu(QtWidgets.QDialog):
             self.min_spin.setValue(min_[self.units])
             self.min_spin.setSuffix(" " + self.units)
             self.min_spin.setMaximum(current[self.units])
+            self.min_spin.setKeyboardTracking(False)
             self.max_spin = QtWidgets.QDoubleSpinBox()
             self.max_spin.setObjectName("max")
             self.max_spin.setMinimum(-1e20)
@@ -335,12 +350,24 @@ class editInputMenu(QtWidgets.QDialog):
             self.max_spin.setValue(max_[self.units])
             self.max_spin.setMinimum(current[self.units])
             self.max_spin.setSuffix(" " + self.units)
+            self.max_spin.setKeyboardTracking(False)
             self.max_spin.valueChanged.connect(self.on_minmax_change)
             self.min_spin.valueChanged.connect(self.on_minmax_change)
+            self.digits = QtWidgets.QDoubleSpinBox()
+            self.digits.setObjectName("digits")
+            self.digits.setMinimum(0)
+            self.digits.setMaximum(20)
+            self.digits.setSingleStep(1)
+            self.digits.setDecimals(0)
+            self.digits.setValue(self.parent_editor.widget_content.decimals())
+            self.digits.setKeyboardTracking(False)
+            self.digits.valueChanged.connect(self.on_digits_change)
             layout.addWidget(QtWidgets.QLabel("Min: "), 0, 0)
             layout.addWidget(QtWidgets.QLabel("Max: "), 1, 0)
+            layout.addWidget(QtWidgets.QLabel("Digits: "), 2, 0)
             layout.addWidget(self.min_spin, 0, 1)
             layout.addWidget(self.max_spin, 1, 1)
+            layout.addWidget(self.digits, 2, 1)
 
         elif type_ == "line_selection":
             self.ok.setAutoDefault(False)
@@ -390,6 +417,10 @@ class editInputMenu(QtWidgets.QDialog):
         r.set(self.name, self.item)
         p.set_parameter(self.collection, self.name, self.item, True)
 
+    def on_digits_change(self):
+        sender = self.sender()
+        self.parent_editor.widget_content.setDecimals(int(sender.value()))
+
     def on_line_selection_mapping_change(self):
         sender = self.sender()
         key = sender.objectName()
@@ -405,11 +436,8 @@ class editInputMenu(QtWidgets.QDialog):
                 widget.setCurrentIndex(widget.findText(d[self.item[1][0]]))
             except KeyError:
                 pass
-        r = self.cxn.registry
         p = self.cxn.parametervault
-        r.cd("", "Servers", "Parameter Vault", self.collection)
-        r.set(self.name, self.item)
-        p.set_parameter(self.collection, self.name, self.item[1])
+        p.set_parameter(self.collection, self.name, self.item, True)
 
     def no_thresholds_change(self, n):
         val = self.item[1]
@@ -431,11 +459,8 @@ class editInputMenu(QtWidgets.QDialog):
                 widget.update_value(val)
             except KeyError:
                 pass
-        r = self.cxn.registry
         p = self.cxn.parametervault
         p.set_parameter(self.collection, self.name, val)
-        r.cd("", "Servers", "Parameter Vault", self.collection)
-        r.set(self.name, (self.item[0], val))
         self.item = (self.item[0], val)
 
 
@@ -593,17 +618,35 @@ class BoolEditor(QtWidgets.QCheckBox, BaseEditor):
     @inlineCallbacks
     def on_param_changed_locally(self, val):
         if self.check_connection(self.acxn):
-            yield self.p.set_parameter([self.collection, self.name, bool(val)])
-            # HACK: avoid having to save parameters to registry through server
-            # why do we even use the registry??
-            yield self.r.cd("", "Servers", "Parameter Vault", self.collection)
-            yield self.r.set(self.name, (self.editor, bool(val)))
+            yield self.p.set_parameter(self.collection, self.name, bool(val))
 
     def update_value(self, val):
         if self.state == val:
             return
         self.setChecked(val)
         self.state = 2 if val else 0
+
+
+class StringEditor(QtWidgets.QLineEdit, BaseEditor):
+    editor = "string"
+    def __init__(self, *params):
+        BaseEditor.__init__(self, *params)
+        QtWidgets.QLineEdit.__init__(self)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setText(self.state)
+        layout = QtWidgets.QVBoxLayout()
+        layout.setAlignment(QtCore.Qt.AlignVCenter)
+        self.setLayout(layout)
+
+        self.editingFinished.connect(self.on_param_changed_locally)
+
+    @inlineCallbacks
+    def on_param_changed_locally(self):
+        if self.check_connection(self.acxn):
+            yield self.p.set_parameter(self.collection, self.name, self.text())
+
+    def update_value(self, val):
+        self.setText(val)
 
 
 class SelectionSimpleEditor(QtWidgets.QComboBox, BaseEditor):
@@ -631,11 +674,7 @@ class SelectionSimpleEditor(QtWidgets.QComboBox, BaseEditor):
         if self.check_connection(self.acxn):
             val = self.currentText()
             self.state = val, self.state[1]
-            yield self.p.set_parameter([self.collection, self.name, self.state])
-            # HACK: avoid having to save parameters to registry through server
-            # why do we even use the registry??
-            yield self.r.cd("", "Servers", "Parameter Vault", self.collection)
-            yield self.r.set(self.name, (self.editor, self.state))
+            yield self.p.set_parameter(self.collection, self.name, val)
 
     def update_value(self, val):
         if self.state == val:
@@ -676,11 +715,7 @@ class LineSelectionEditor(QtWidgets.QComboBox, BaseEditor):
             d = dict((x, y) for y, x in self.state[1])
             val = d[_val]
             self.state = val, self.state[1]
-            yield self.p.set_parameter([self.collection, self.name, self.state])
-            # HACK: avoid having to save parameters to registry through server
-            # why do we even use the registry??
-            yield self.r.cd("", "Servers", "Parameter Vault", self.collection)
-            yield self.r.set(self.name, (self.editor, self.state))
+            yield self.p.set_parameter(self.collection, self.name, val)
 
     def update_value(self, val):
         if self.state[0] == val[0]:
@@ -732,9 +767,7 @@ class ParameterSelectionEditor(QtWidgets.QDoubleSpinBox, BaseEditor):
         U_val = U(val, self.units)
         if self.check_connection(self.acxn) and self.check_bounds(val):
             self.state[-1] = U_val
-            yield self.p.set_parameter([self.collection, self.name, U_val])
-            yield self.r.cd("", "Servers", "Parameter Vault", self.collection)
-            yield self.r.set(self.name, (self.editor, self.state))
+            yield self.p.set_parameter(self.collection, self.name, U_val)
         else:
             try:
                 self.setValue(self.state[-1][self.units])
@@ -763,100 +796,8 @@ class ParameterSelectionEditor(QtWidgets.QDoubleSpinBox, BaseEditor):
         super(ParameterSelectionEditor, self).focusOutEvent(event)
 
 
-class IntListEditor(BaseEditor):
-    editor = "int_list"
-    refreshsignal = QtCore.pyqtSignal(list)
-    def __init__(self, *params):
-        BaseEditor.__init__(self, *params)
-        QtWidgets.QWidget.__init__(self)
-        self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        try:
-            assert type(self.state) == np.ndarray
-            for i in self.state:
-                int(i)
-        except (AssertionError, ValueError):
-            logger.info("Improper format for int_list "
-                        "registry entry: {}".format(self.state))
-            return
-        self.layout = QtWidgets.QHBoxLayout()
-        self.widgets = []
-        for i in range(len(self.state)):
-            widget = QtWidgets.QSpinBox()
-            widget.setButtonSymbols(2)
-            widget.setObjectName(str(i))
-            widget.setValue(int(self.state[i]))
-            widget.valueChanged.connect(self.on_param_changed_locally)
-            self.layout.addWidget(widget)
-            self.widgets.append(widget)
-        self.setLayout(self.layout)
-        self.refreshsignal.connect(self.refresh_widgets)
-
-    def check_bounds(self, val):
-        blist = [val[i] < val[i+1] for i in range(len(val) - 1)]
-        if False in blist:
-            return False
-        else:
-            return True
-
-    @inlineCallbacks
-    def on_param_changed_locally(self, newval):
-        try:
-            sender = self.sender()
-            obj_idx = int(sender.objectName())
-        except (AttributeError, ValueError):
-            obj_idx = 0
-        val = [int(widget.value()) for widget in self.widgets]
-        if self.check_connection(self.acxn) and self.check_bounds(val):
-            yield self.p.set_parameter([self.collection, self.name, val])
-            yield self.r.cd("", "Servers", "Parameter Vault", self.collection)
-            yield self.r.set(self.name, (self.editor, val))
-            self.state[obj_idx] = newval
-        else:
-            sender.setValue(self.state[obj_idx])
-
-    @inlineCallbacks
-    def update_value(self, val):
-        if list(self.state) == list(val):
-            return
-        lstate = len(self.state)
-        lval = len(val)
-        diff = lval - lstate
-        if diff == 0:
-            for i, widget in enumerate(self.widgets):
-                widget.setValue(int(val[i]))
-        else:
-            self.refreshsignal.emit(list(val))
-        self.state = val
-        if self.r is not None:
-            yield self.r.cd("", "Servers", "Parameter Vault", self.collection)
-            yield self.r.set(self.name, (self.editor, val))
-        else:
-            self.r = yield self.acxn.get_server("registry")
-            yield self.r.cd("", "Servers", "Parameter Vault", self.collection)
-            yield self.r.set(self.name, (self.editor, val))
-
-    def refresh_widgets(self, val):
-        for widget in self.widgets:
-            self.layout.removeWidget(widget)
-            widget.deleteLater()
-            widget = None
-        del self.widgets
-        self.widgets = []
-        for i in range(len(val)):
-            try:
-                widget = QtWidgets.QSpinBox()
-                widget.setButtonSymbols(2)
-                widget.setObjectName(str(i))
-                widget.setValue(int(val[i]))
-                widget.valueChanged.connect(self.on_param_changed_locally)
-                self.layout.addWidget(widget)
-                self.widgets.append(widget)
-            except:
-                logger.warning("Couldn't refresh int_list widget", exc_info=True)
-
-
 BoolEditor.register()
+StringEditor.register()
 SelectionSimpleEditor.register()
 LineSelectionEditor.register()
 ParameterSelectionEditor.register()
-IntListEditor.register()

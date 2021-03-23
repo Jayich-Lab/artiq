@@ -167,14 +167,15 @@ def main():
     smgr.register(expmgr)
     d_shortcuts = shortcuts.ShortcutsDock(main_window, expmgr)
     smgr.register(d_shortcuts)
-    d_parameters = parameter_editor.ParameterEditorDock()
-    smgr.register(d_parameters)
     d_explorer = explorer.ExplorerDock(expmgr, d_shortcuts,
                                        sub_clients["explist"],
                                        sub_clients["explist_status"],
                                        rpc_clients["schedule"],
                                        rpc_clients["experiment_db"])
     smgr.register(d_explorer)
+
+    d_parameters = parameter_editor.ParameterEditorDock(explorer=d_explorer)
+    smgr.register(d_parameters)
 
     d_datasets = datasets.DatasetsDock(sub_clients["datasets"],
                                        rpc_clients["dataset_db"])
