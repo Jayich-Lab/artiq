@@ -9,6 +9,7 @@ from qasync import QEventLoop, QtWidgets, QtCore
 from sipyco.sync_struct import Subscriber, process_mod
 from sipyco import pyon
 from sipyco.pipe_ipc import AsyncioChildComm
+from sipyco.pc_rpc import AsyncioClient as RPCClient
 
 
 logger = logging.getLogger(__name__)
@@ -98,15 +99,70 @@ class SimpleApplet:
 
         self.dataset_args = set()
 
-    def add_dataset(self, name, help=None, required=True):
+    def add_dataset(self, name, help=None, required=True, default=None):
         kwargs = dict()
         if help is not None:
             kwargs["help"] = help
+        if default is not None:
+            kwargs["default"] = default
         if required:
             self._arggroup_datasets.add_argument(name, **kwargs)
         else:
             self._arggroup_datasets.add_argument("--" + name, **kwargs)
         self.dataset_args.add(name)
+
+    async def submit_experiment(self, pipeline_name, expid, priority):
+        logger.info(f"Submitting experiment {expid}.")
+        rid = None
+        try:
+            remote = RPCClient()
+            await remote.connect_rpc(self.args.server, 3251,
+                                     "master_schedule")
+ 
+            try:
+                rid = await remote.submit(pipeline_name, expid, priority)
+            finally:
+                remote.close_rpc()
+        except:
+            logger.error(f"Failed submitting experiment {expid}", exec_info=True)
+        else:
+            logger.info(f"Finished submitting experiment {expid}")
+        return rid
+
+    async def get_scheduler_status(self):
+        logger.info("Getting scheduler status.")
+        status = None
+        try:
+            remote = RPCClient()
+            await remote.connect_rpc(self.args.server, 3251,
+                                     "master_schedule")
+ 
+            try:
+                status = await remote.get_status()
+            finally:
+                remote.close_rpc()
+        except:
+            logger.error("Failed getting scheduler status", exec_info=True)
+        else:
+            logger.info("Finished getting scheduler status")
+        return status
+
+    async def request_terminate_experiment(self, rid):
+        logger.info(f"Requesting terminating experiment {rid}.")
+        status = None
+        try:
+            remote = RPCClient()
+            await remote.connect_rpc(self.args.server, 3251,
+                                     "master_schedule")
+ 
+            try:
+                await remote.request_termination(rid)
+            finally:
+                remote.close_rpc()
+        except:
+            logger.error(f"Failed terminating experiment {rid}", exec_info=True)
+        else:
+            logger.info(f"Finished terminating experiment {rid}")
 
     def args_init(self):
         self.args = self.argparser.parse_args()
@@ -130,6 +186,7 @@ class SimpleApplet:
 
     def create_main_widget(self):
         self.main_widget = self.main_widget_class(self.args)
+        setattr(self.main_widget, "parent", self)
         if self.embed is not None:
             self.ipc.set_close_cb(self.main_widget.close)
             if os.name == "nt":
