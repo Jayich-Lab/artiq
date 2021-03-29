@@ -11,7 +11,6 @@ from sipyco import pyon
 from sipyco.pipe_ipc import AsyncioChildComm
 from sipyco.pc_rpc import AsyncioClient as RPCClient
 
-
 logger = logging.getLogger(__name__)
 
 

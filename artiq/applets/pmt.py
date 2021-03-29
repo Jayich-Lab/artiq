@@ -6,12 +6,15 @@ from artiq.applets.simple import SimpleApplet
 from labrad import connect
 from sipyco.pc_rpc import AsyncioClient as RPCClient
 import asyncio
+from config.artiq_dashboard import dashboard_config
+import os
 
 
 class PMT(QtWidgets.QDockWidget):
     def __init__(self, args):
         QtWidgets.QDockWidget.__init__(self, "PMT")
         self.dataset_name = args.dataset
+        self.ip = dashboard_config["ip"]
         self.cxn = None
         self.rid = None
         self.make_GUI()
@@ -27,7 +30,8 @@ class PMT(QtWidgets.QDockWidget):
 
     def connect(self):
         if self.cxn is None:
-            self.cxn = connect()
+            self.cxn = connect(self.ip,
+                               password=os.environ["LABRADPASSWORD"])
 
     def data_changed(self, data, mods):
         try:

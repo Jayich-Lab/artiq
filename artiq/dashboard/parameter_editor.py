@@ -13,6 +13,7 @@ import logging
 from twisted.internet.defer import inlineCallbacks
 import importlib
 import sys
+from config.artiq_dashboard import dashboard_config
 import os
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,8 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
 
         self.cxn = None
         try:
-            self.cxn = labrad.connect()
+            self.cxn = labrad.connect(dashboard_config["ip"],
+                                      password=os.environ["LABRADPASSWORD"])
         except:
             logger.warning("Parameter Editor failed to connect to labrad.", exc_info=True)
             self.setDisabled(True)
@@ -192,7 +194,7 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
     @inlineCallbacks
     def setup_listeners(self):
         try:
-            yield self.acxn.connect()
+            yield self.acxn.connect(dashboard_config["ip"])
             context = yield self.acxn.context()
             p = yield self.acxn.get_server("ParameterVault")
             yield p.signal__parameter_change(parameterchangedID, context=context)
@@ -231,7 +233,8 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
         if len(self.table.selectedItems()) == 0:
             return
         try:
-            cxn = labrad.connect()
+            cxn = labrad.connect(dashboard_config["ip"],
+                                 password=os.environ["LABRADPASSWORD"])
             r = cxn.registry
         except:
             logger.error("In trying to edit registry, failed to "
@@ -248,7 +251,8 @@ class ParameterEditorDock(QtWidgets.QDockWidget):
 
     def on_newparam_action(self):
         try:
-            cxn = labrad.connect()
+            cxn = labrad.connect(dashboard_config["ip"],
+                                 password=os.environ["LABRADPASSWORD"])
         except:
             logger.error("In trying to add parameter to registry "
                          "failed to connect to labrad.", exc_info=True)
