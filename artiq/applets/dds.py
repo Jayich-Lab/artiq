@@ -4,14 +4,11 @@ from PyQt5 import QtGui, QtWidgets
 from artiq.gui.tools import LayoutWidget
 from artiq.applets.simple import SimpleApplet
 from artiq.coredevice.comm_moninj import *
-from labrad import connect
 from sipyco.pc_rpc import AsyncioClient as RPCClient
 import asyncio
 from config.artiq_dashboard import dashboard_config
 from artiq_exps.utilities.devices import Devices
 from artiq.applets.components.dds_channel import DDSChannel, DDSParameters
-import os
-import time
 
 
 class DDS(QtWidgets.QDockWidget):
@@ -40,11 +37,6 @@ class DDS(QtWidgets.QDockWidget):
             sw_ch = self.ttls[sw]["arguments"]["channel"]
             self.ad9910_sws[sw_ch] = kk
         self.core_connector_task = asyncio.ensure_future(self.core_connector())
-
-    def connect(self):
-        if self.cxn is None:
-            self.cxn = connect(self.ip,
-                               password=os.environ["LABRADPASSWORD"])
 
     async def core_connector(self):
         await self.gui_initialized.wait()
