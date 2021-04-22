@@ -202,7 +202,7 @@ def main():
     # lay out docks
     right_docks = [
         d_explorer, d_shortcuts, d_parameters,
-        d_ttl_dds.ttl_dock, d_ttl_dds.dds_dock, d_ttl_dds.dac_dock,
+        d_ttl_dds.ttl_dock, #d_ttl_dds.dds_dock, d_ttl_dds.dac_dock,
         d_datasets, d_applets
     ]
     main_window.addDockWidget(QtCore.Qt.RightDockWidgetArea, right_docks[0])
@@ -221,8 +221,8 @@ def main():
     atexit_register_coroutine(smgr.stop)
 
     # work around for https://github.com/m-labs/artiq/issues/1307
-    d_ttl_dds.ttl_dock.show()
-    d_ttl_dds.dds_dock.show()
+    #d_ttl_dds.ttl_dock.show()
+    #d_ttl_dds.dds_dock.show()
 
     # create first log dock if not already in state
     d_log0 = logmgr.first_log_dock()

@@ -168,34 +168,34 @@ class _SimpleDisplayWidget(QtWidgets.QFrame):
         raise NotImplementedError
 
 
-class _DDSWidget(_SimpleDisplayWidget):
-    def __init__(self, dm, bus_channel, channel, title):
-        self.bus_channel = bus_channel
-        self.channel = channel
-        self.cur_frequency = 0
-        _SimpleDisplayWidget.__init__(self, title)
-
-    def refresh_display(self):
-        self.value.setText("<font size=\"4\">{:.7f}</font><font size=\"2\"> MHz</font>"
-                           .format(self.cur_frequency/1e6))
-
-    def sort_key(self):
-        return (self.bus_channel, self.channel)
-
-
-class _DACWidget(_SimpleDisplayWidget):
-    def __init__(self, dm, spi_channel, channel, title):
-        self.spi_channel = spi_channel
-        self.channel = channel
-        self.cur_value = 0
-        _SimpleDisplayWidget.__init__(self, "{} ch{}".format(title, channel))
-
-    def refresh_display(self):
-        self.value.setText("<font size=\"4\">{:.3f}</font><font size=\"2\"> %</font>"
-                           .format(self.cur_value*100/2**16))
-
-    def sort_key(self):
-        return (self.spi_channel, self.channel)
+#class _DDSWidget(_SimpleDisplayWidget):
+#    def __init__(self, dm, bus_channel, channel, title):
+#        self.bus_channel = bus_channel
+#        self.channel = channel
+#        self.cur_frequency = 0
+#        _SimpleDisplayWidget.__init__(self, title)
+#
+#    def refresh_display(self):
+#        self.value.setText("<font size=\"4\">{:.7f}</font><font size=\"2\"> MHz</font>"
+#                           .format(self.cur_frequency/1e6))
+#
+#    def sort_key(self):
+#        return (self.bus_channel, self.channel)
+#
+#
+#class _DACWidget(_SimpleDisplayWidget):
+#    def __init__(self, dm, spi_channel, channel, title):
+#        self.spi_channel = spi_channel
+#        self.channel = channel
+#        self.cur_value = 0
+#        _SimpleDisplayWidget.__init__(self, "{} ch{}".format(title, channel))
+#
+#    def refresh_display(self):
+#        self.value.setText("<font size=\"4\">{:.3f}</font><font size=\"2\"> %</font>"
+#                           .format(self.cur_value*100/2**16))
+#
+#    def sort_key(self):
+#        return (self.spi_channel, self.channel)
 
 
 _WidgetDesc = namedtuple("_WidgetDesc", "uid comment cls arguments")
@@ -219,23 +219,23 @@ def setup_from_ddb(ddb):
                     force_out = v["class"] == "TTLOut"
                     widget = _WidgetDesc(k, comment, _TTLWidget, (channel, force_out, k))
                     description.add(widget)
-                elif (v["module"] == "artiq.coredevice.ad9914"
-                        and v["class"] == "AD9914"):
-                    bus_channel = v["arguments"]["bus_channel"]
-                    channel = v["arguments"]["channel"]
-                    dds_sysclk = v["arguments"]["sysclk"]
-                    widget = _WidgetDesc(k, comment, _DDSWidget, (bus_channel, channel, k))
-                    description.add(widget)
-                elif (   (v["module"] == "artiq.coredevice.ad53xx" and v["class"] == "AD53XX")
-                      or (v["module"] == "artiq.coredevice.zotino" and v["class"] == "Zotino")):
-                    spi_device = v["arguments"]["spi_device"]
-                    spi_device = ddb[spi_device]
-                    while isinstance(spi_device, str):
-                        spi_device = ddb[spi_device]
-                    spi_channel = spi_device["arguments"]["channel"]
-                    for channel in range(32):
-                        widget = _WidgetDesc((k, channel), comment, _DACWidget, (spi_channel, channel, k))
-                        description.add(widget)
+                #elif (v["module"] == "artiq.coredevice.ad9914"
+                #        and v["class"] == "AD9914"):
+                #    bus_channel = v["arguments"]["bus_channel"]
+                #    channel = v["arguments"]["channel"]
+                #    dds_sysclk = v["arguments"]["sysclk"]
+                #    widget = _WidgetDesc(k, comment, _DDSWidget, (bus_channel, channel, k))
+                #    description.add(widget)
+                #elif (   (v["module"] == "artiq.coredevice.ad53xx" and v["class"] == "AD53XX")
+                #      or (v["module"] == "artiq.coredevice.zotino" and v["class"] == "Zotino")):
+                #    spi_device = v["arguments"]["spi_device"]
+                #    spi_device = ddb[spi_device]
+                #    while isinstance(spi_device, str):
+                #        spi_device = ddb[spi_device]
+                #    spi_channel = spi_device["arguments"]["channel"]
+                #    for channel in range(32):
+                #        widget = _WidgetDesc((k, channel), comment, _DACWidget, (spi_channel, channel, k))
+                #        description.add(widget)
         except KeyError:
             pass
     return core_addr, dds_sysclk, description
@@ -255,10 +255,10 @@ class _DeviceManager:
         self.dds_sysclk = 0
         self.ttl_cb = lambda: None
         self.ttl_widgets = dict()
-        self.dds_cb = lambda: None
-        self.dds_widgets = dict()
-        self.dac_cb = lambda: None
-        self.dac_widgets = dict()
+        #self.dds_cb = lambda: None
+        #self.dds_widgets = dict()
+        #self.dac_cb = lambda: None
+        #self.dac_widgets = dict()
 
     def init_ddb(self, ddb):
         self.ddb = ddb
@@ -282,16 +282,16 @@ class _DeviceManager:
                 widget.deleteLater()
                 del self.ttl_widgets[widget.channel]
                 self.ttl_cb()
-            elif isinstance(widget, _DDSWidget):
-                self.setup_dds_monitoring(False, widget.bus_channel, widget.channel)
-                widget.deleteLater()
-                del self.dds_widgets[(widget.bus_channel, widget.channel)]
-                self.dds_cb()
-            elif isinstance(widget, _DACWidget):
-                self.setup_dac_monitoring(False, widget.spi_channel, widget.channel)
-                widget.deleteLater()
-                del self.dac_widgets[(widget.spi_channel, widget.channel)]
-                self.dac_cb()     
+            #elif isinstance(widget, _DDSWidget):
+            #    self.setup_dds_monitoring(False, widget.bus_channel, widget.channel)
+            #    widget.deleteLater()
+            #    del self.dds_widgets[(widget.bus_channel, widget.channel)]
+            #    self.dds_cb()
+            #elif isinstance(widget, _DACWidget):
+            #    self.setup_dac_monitoring(False, widget.spi_channel, widget.channel)
+            #    widget.deleteLater()
+            #    del self.dac_widgets[(widget.spi_channel, widget.channel)]
+            #    self.dac_cb()     
             else:
                 raise ValueError
 
@@ -305,14 +305,14 @@ class _DeviceManager:
                 self.ttl_widgets[widget.channel] = widget
                 self.ttl_cb()
                 self.setup_ttl_monitoring(True, widget.channel)
-            elif isinstance(widget, _DDSWidget):
-                self.dds_widgets[(widget.bus_channel, widget.channel)] = widget
-                self.dds_cb()
-                self.setup_dds_monitoring(True, widget.bus_channel, widget.channel)
-            elif isinstance(widget, _DACWidget):
-                self.dac_widgets[(widget.spi_channel, widget.channel)] = widget
-                self.dac_cb()
-                self.setup_dac_monitoring(True, widget.spi_channel, widget.channel)
+            #elif isinstance(widget, _DDSWidget):
+            #    self.dds_widgets[(widget.bus_channel, widget.channel)] = widget
+            #    self.dds_cb()
+            #    self.setup_dds_monitoring(True, widget.bus_channel, widget.channel)
+            #elif isinstance(widget, _DACWidget):
+            #    self.dac_widgets[(widget.spi_channel, widget.channel)] = widget
+            #    self.dac_cb()
+            #    self.setup_dac_monitoring(True, widget.spi_channel, widget.channel)
             else:
                 raise ValueError
 
@@ -350,13 +350,13 @@ class _DeviceManager:
             if enable:
                 self.core_connection.get_injection_status(channel, TTLOverride.en.value)
 
-    def setup_dds_monitoring(self, enable, bus_channel, channel):
-        if self.core_connection is not None:
-            self.core_connection.monitor_probe(enable, bus_channel, channel)
-
-    def setup_dac_monitoring(self, enable, spi_channel, channel):
-        if self.core_connection is not None:
-            self.core_connection.monitor_probe(enable, spi_channel, channel)
+    #def setup_dds_monitoring(self, enable, bus_channel, channel):
+    #    if self.core_connection is not None:
+    #        self.core_connection.monitor_probe(enable, bus_channel, channel)
+    #
+    #def setup_dac_monitoring(self, enable, spi_channel, channel):
+    #    if self.core_connection is not None:
+    #        self.core_connection.monitor_probe(enable, spi_channel, channel)
 
     def monitor_cb(self, channel, probe, value):
         if channel in self.ttl_widgets:
@@ -366,14 +366,14 @@ class _DeviceManager:
             elif probe == TTLProbe.oe.value:
                 widget.cur_oe = bool(value)
             widget.refresh_display()
-        if (channel, probe) in self.dds_widgets:
-            widget = self.dds_widgets[(channel, probe)]
-            widget.cur_frequency = value*self.dds_sysclk/2**32
-            widget.refresh_display()
-        if (channel, probe) in self.dac_widgets:
-            widget = self.dac_widgets[(channel, probe)]
-            widget.cur_value = value
-            widget.refresh_display()
+        #if (channel, probe) in self.dds_widgets:
+        #    widget = self.dds_widgets[(channel, probe)]
+        #    widget.cur_frequency = value*self.dds_sysclk/2**32
+        #    widget.refresh_display()
+        #if (channel, probe) in self.dac_widgets:
+        #    widget = self.dac_widgets[(channel, probe)]
+        #    widget.cur_value = value
+        #    widget.refresh_display()
 
     def injection_status_cb(self, channel, override, value):
         if channel in self.ttl_widgets:
@@ -410,10 +410,10 @@ class _DeviceManager:
                 self.core_connection = new_core_connection
                 for ttl_channel in self.ttl_widgets.keys():
                     self.setup_ttl_monitoring(True, ttl_channel)
-                for bus_channel, channel in self.dds_widgets.keys():
-                    self.setup_dds_monitoring(True, bus_channel, channel)
-                for spi_channel, channel in self.dac_widgets.keys():
-                    self.setup_dac_monitoring(True, spi_channel, channel)
+                #for bus_channel, channel in self.dds_widgets.keys():
+                #    self.setup_dds_monitoring(True, bus_channel, channel)
+                #for spi_channel, channel in self.dac_widgets.keys():
+                #    self.setup_dac_monitoring(True, spi_channel, channel)
 
     async def close(self):
         self.core_connector_task.cancel()
@@ -450,16 +450,16 @@ class _MonInjDock(QtWidgets.QDockWidget):
 class MonInj:
     def __init__(self):
         self.ttl_dock = _MonInjDock("TTL")
-        self.dds_dock = _MonInjDock("DDS")
-        self.dac_dock = _MonInjDock("DAC")
+        #self.dds_dock = _MonInjDock("DDS")
+        #self.dac_dock = _MonInjDock("DAC")
 
         self.dm = _DeviceManager()
         self.dm.ttl_cb = lambda: self.ttl_dock.layout_widgets(
                             self.dm.ttl_widgets.values())
-        self.dm.dds_cb = lambda: self.dds_dock.layout_widgets(
-                            self.dm.dds_widgets.values())
-        self.dm.dac_cb = lambda: self.dac_dock.layout_widgets(
-                            self.dm.dac_widgets.values())
+        #self.dm.dds_cb = lambda: self.dds_dock.layout_widgets(
+        #                    self.dm.dds_widgets.values())
+        #self.dm.dac_cb = lambda: self.dac_dock.layout_widgets(
+        #                    self.dm.dac_widgets.values())
 
         self.subscriber = Subscriber("devices", self.dm.init_ddb, self.dm.notify)
 
