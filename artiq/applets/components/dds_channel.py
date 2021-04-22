@@ -83,11 +83,12 @@ class DDSParameters:
             "main", params, priority=-10)
 
 
-class DDSDetail(QtWidgets.QWidget):
+class DDSDetail(QtWidgets.QDialog):
     def __init__(self, dds_parameters, parent=None):
         self.dds_parameters = dds_parameters
         super().__init__(parent)
         self.make_GUI()
+        self.initialize_connections()
 
     def make_GUI(self):
         grid = QtWidgets.QGridLayout()
@@ -169,7 +170,7 @@ class DDSChannel(QtWidgets.QGroupBox):
         self.freq_box.setFont(spinboxfont)
         self.freq_box.setKeyboardTracking(False)
         MHz_to_Hz = 1.e6
-        self.freq_box.setValue(self.dds_parameters.frequency * MHz_to_Hz)
+        self.freq_box.setValue(self.dds_parameters.frequency / MHz_to_Hz)
         grid.addWidget(self.freq_box, 2, 0)
 
         self.amp_box = QtWidgets.QDoubleSpinBox()
@@ -213,12 +214,11 @@ class DDSChannel(QtWidgets.QGroupBox):
     def on_monitor_freq_changed(self, val):
         MHz_to_Hz = 1.e6
         self.freq_box.blockSignals(True)
-        self.freq_box.setValue(val * MHz_to_Hz)
+        self.freq_box.setValue(val / MHz_to_Hz)
         self.freq_box.blockSignals(False)
         self.dds_parameters.set_frequency(val, False)
 
     def on_monitor_amp_changed(self, val):
-        print(val)
         self.amp_box.blockSignals(True)
         self.amp_box.setValue(val)
         self.amp_box.blockSignals(False)
@@ -249,7 +249,7 @@ class DDSChannel(QtWidgets.QGroupBox):
 
     def show_details(self):
         self.details = DDSDetail(self.dds_parameters)
-        self.details.show()
+        self.details.exec_()
 
 
 if __name__ == "__main__":

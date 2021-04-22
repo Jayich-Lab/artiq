@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+import asyncio
 from PyQt5 import QtGui, QtWidgets
 from artiq.gui.tools import LayoutWidget
 from artiq.applets.simple import SimpleApplet
 from artiq.coredevice.comm_moninj import *
 from sipyco.pc_rpc import AsyncioClient as RPCClient
-import asyncio
 from config.artiq_dashboard import dashboard_config
 from artiq_exps.utilities.devices import Devices
 from artiq.applets.components.dds_channel import DDSChannel, DDSParameters
@@ -39,6 +39,7 @@ class DDS(QtWidgets.QDockWidget):
         self.core_connector_task = asyncio.ensure_future(self.core_connector())
 
     async def core_connector(self):
+        """If the state does not update correctly, maybe some looping is needed."""
         await self.gui_initialized.wait()
         new_core_connection = CommMonInj(self.monitor_cb, self.injection_status_cb,
                                          self.disconnect_cb)
@@ -66,30 +67,33 @@ class DDS(QtWidgets.QDockWidget):
         kk = 0
         if mods[0]["action"] == "setitem":
             if not self.gui_initialized.is_set():
-                for channel in self.ad9910s:
-                    cpld = self.ad9910s[channel]["arguments"]["cpld_device"]
-                    amp = data[f"misc.{channel}.amplitude"][1]
-                    att = data[f"misc.{channel}.att"][1]
-                    frequency = data[f"misc.{channel}.frequency"][1]
-                    phase = data[f"misc.{channel}.phase"][1]
-                    state = data[f"misc.{channel}.state"][1]
-                    channel_param = DDSParameters(
-                        self.parent, channel, cpld, amp, att, frequency,
-                        phase, state)
-                    channel_widget = DDSChannel(channel_param, self)
-                    self.channels[channel] = channel_widget
-                    self.grid.addWidget(channel_widget, kk, 0)
-                    kk += 1
-                self.gui_initialized.set()
+                if mods[0]["key"] == "misc.dds_update_time":
+                    for channel in self.ad9910s:
+                        cpld = self.ad9910s[channel]["arguments"]["cpld_device"]
+                        amp = data[f"misc.{channel}.amplitude"][1]
+                        att = data[f"misc.{channel}.att"][1]
+                        frequency = data[f"misc.{channel}.frequency"][1]
+                        phase = data[f"misc.{channel}.phase"][1]
+                        state = data[f"misc.{channel}.state"][1]
+                        channel_param = DDSParameters(
+                            self.parent, channel, cpld, amp, att, frequency,
+                            phase, state)
+                        channel_widget = DDSChannel(channel_param, self)
+                        self.channels[channel] = channel_widget
+                        self.grid.addWidget(channel_widget, kk, 0)
+                        kk += 1
+                    self.gui_initialized.set()
             else:
-                for channel in self.ad9910s:
-                    frequency = data[f"misc.{channel}.frequency"][1]
-                    self.channels[channel].on_monitor_freq_changed(frequency)
-                    amp = data[f"misc.{channel}.amplitude"][1]
-                    self.channels[channel].on_monitor_amp_changed(amp)
-                    att = data[f"misc.{channel}.att"][1]
-                    self.channels[channel].on_monitor_att_changed(amp)
-                    # do not change the state here.
+                for mod in mods:
+                    if mod["key"] != "misc.dds_update_time":
+                        value = mod["value"][1]
+                        channel = mod["key"].split(".")[1]
+                        if mod["key"].endswith("frequency"):
+                            self.channels[channel].on_monitor_freq_changed(value)
+                        if mod["key"].endswith("amplitude"):
+                            self.channels[channel].on_monitor_amp_changed(value)
+                        if mod["key"].endswith("att"):
+                            self.channels[channel].on_monitor_att_changed(value)
 
     def make_GUI(self):
         font = QtGui.QFont('Arial', 15)
@@ -104,6 +108,11 @@ def main():
     applet = SimpleApplet(DDS)
     applet.add_dataset(name="update_time", help=None, required=False,
                        default="misc.dds_update_time")
+    ddses = Devices().ad9910s
+    for channel in ddses:
+        for item in ["amplitude", "att", "frequency", "phase", "state"]:
+            applet.add_dataset(name=f"dds_{channel}_{item}", help=None, required=False,
+                               default=f"misc.{channel}.{item}")
     applet.run()
 
 if __name__ == "__main__":
