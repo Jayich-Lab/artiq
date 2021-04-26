@@ -107,7 +107,16 @@ def main():
     experiment_db = ExperimentDB(repo_backend, worker_handlers)
     atexit.register(experiment_db.close)
 
-    scheduler = Scheduler(RIDCounter(), worker_handlers, experiment_db)
+    try:
+        from config.artiq_master import master_config
+        data_folder = master_config["data_folder"]
+    except (ImportError, KeyError):
+        logging.warning(("Cannot find master_config['data_folder'] in config.artiq_master. "
+                         "Saving data in 'results' folder"))
+        data_folder = "results"
+
+    scheduler = Scheduler(RIDCounter(results_dir=data_folder),
+                          worker_handlers, experiment_db)
     scheduler.start()
     atexit_register_coroutine(scheduler.stop)
 
