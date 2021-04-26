@@ -1,6 +1,6 @@
 from numpy import int32, int64
 
-from artiq.language.types import TInt32, TInt64, TFloat, TTuple
+from artiq.language.types import TInt32, TInt64, TFloat, TTuple, TBool
 from artiq.language.core import kernel, delay, portable
 from artiq.language.units import ms, us, ns
 from artiq.coredevice.ad9912_reg import *
@@ -26,10 +26,11 @@ class AD9912:
         is the reference clock divider (both set in the parent Urukul CPLD
         instance).
     """
-    kernel_invariants = {"chip_select", "cpld", "core", "bus", "ftw_per_hz"}
 
     def __init__(self, dmgr, chip_select, cpld_device, sw_device=None,
                  pll_n=10):
+        self.kernel_invariants = {"cpld", "core", "bus", "chip_select",
+                                  "pll_n", "ftw_per_hz"}
         self.cpld = dmgr.get(cpld_device)
         self.core = self.cpld.core
         self.bus = self.cpld.bus
@@ -253,7 +254,7 @@ class AD9912:
         return self.ftw_to_frequency(ftw), self.pow_to_turns(pow_)
 
     @kernel
-    def cfg_sw(self, state: TInt32):
+    def cfg_sw(self, state: TBool):
         """Set CPLD CFG RF switch state. The RF switch is controlled by the
         logical or of the CPLD configuration shift register
         RF switch bit and the SW TTL line (if used).
