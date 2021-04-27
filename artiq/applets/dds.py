@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
+import os
 import asyncio
+import labrad
+
 from PyQt5 import QtGui, QtWidgets
+from sipyco import pyon
 from artiq.gui.tools import LayoutWidget
 from artiq.applets.simple import SimpleApplet
 from artiq.coredevice.comm_moninj import *
-from sipyco.pc_rpc import AsyncioClient as RPCClient
-from config.artiq_dashboard import dashboard_config
-from artiq_exps.utilities.devices import Devices
 from artiq.applets.components.dds_channel import DDSChannel, DDSParameters
+from config.artiq_dashboard import dashboard_config
 
 
 class DDS(QtWidgets.QDockWidget):
@@ -16,27 +18,51 @@ class DDS(QtWidgets.QDockWidget):
         QtWidgets.QDockWidget.__init__(self, "DDS")
         self.dataset_name = args.update_time
         self.ip = dashboard_config["ip"]
-        self.cxn = None
+        self.cxn = labrad.connect(
+            self.ip, password=os.environ["LABRADPASSWORD"])
         self.exp_read_params = {
             "arguments": {},
             "class_name": "_GetUrukulDatasets",
             "file": "experiments/misc/get_urukul_datasets.py",
             "log_level": 30,
             "repo_rev": None,
-            "priority": -10
+            "priority": 0
         }
         self.channels = {}
         self.gui_initialized = asyncio.Event()
         self.make_GUI()
-        asyncio.ensure_future(self._read_parameters())
-        self.ad9910s = Devices().ad9910s
-        self.ttls = Devices().ttls
+
+        ad9910_names = self.cxn.artiq_control.get_ad9910s()
+        self.ad9910s = {}
+        for name in ad9910_names:
+            self.ad9910s[name] = pyon.decode(self.cxn.artiq_control.get_ad9910_info(name))
+
+        ttl_names = self.cxn.artiq_control.get_ttls()
+        self.ttls = {}
+        for name in ttl_names:
+            self.ttls[name] = pyon.decode(self.cxn.artiq_control.get_ttl_info(name))
+
         self.ad9910_sws = {}
         for kk in self.ad9910s:
             sw = self.ad9910s[kk]["arguments"]["sw_device"]
             sw_ch = self.ttls[sw]["arguments"]["channel"]
             self.ad9910_sws[sw_ch] = kk
-        self.core_connector_task = asyncio.ensure_future(self.core_connector())
+
+        self.read_parameters()
+        self.core = self.cxn.artiq_control.get_core_info("core")
+
+        # disables core connector for now.
+        #self.core_connector_task = asyncio.ensure_future(self.core_connector())
+
+    def connect(self):
+        if not self.cxn.connected:
+            self.cxn = labrad.connect(
+                self.ip, password=os.environ["LABRADPASSWORD"])
+
+    def read_parameters(self):
+        self.connect()
+        self.cxn.artiq_control.submit_experiment(
+            "main", pyon.encode(self.exp_read_params), -10)
 
     async def core_connector(self):
         """If the state does not update correctly, maybe some looping is needed."""
@@ -44,7 +70,7 @@ class DDS(QtWidgets.QDockWidget):
         new_core_connection = CommMonInj(self.monitor_cb, self.injection_status_cb,
                                          self.disconnect_cb)
         port = 1383
-        core_addr = Devices().cores["core"]["arguments"]["host"]
+        core_addr = self.core["arguments"]["host"]
         await new_core_connection.connect(core_addr, port)
         self.core_connection = new_core_connection
         for channel in self.ad9910_sws:
@@ -53,7 +79,7 @@ class DDS(QtWidgets.QDockWidget):
 
     def monitor_cb(self, channel, probe, value):
         dds = self.ad9910_sws[channel]
-        if not probe:
+        if not probe and dds in channels:
             self.channels[dds].on_monitor_switch_changed(bool(value))
 
     def injection_status_cb(self, channel, override, value):
@@ -76,7 +102,7 @@ class DDS(QtWidgets.QDockWidget):
                         phase = data[f"misc.{channel}.phase"][1]
                         state = data[f"misc.{channel}.state"][1]
                         channel_param = DDSParameters(
-                            self.parent, channel, cpld, amp, att, frequency,
+                            self, channel, cpld, amp, att, frequency,
                             phase, state)
                         channel_widget = DDSChannel(channel_param, self)
                         self.channels[channel] = channel_widget
@@ -108,7 +134,10 @@ def main():
     applet = SimpleApplet(DDS)
     applet.add_dataset(name="update_time", help=None, required=False,
                        default="misc.dds_update_time")
-    ddses = Devices().ad9910s
+    cxn = labrad.connect(dashboard_config["ip"],
+                         password=os.environ["LABRADPASSWORD"])
+    ddses = cxn.artiq_control.get_ad9910s()
+    cxn.disconnect()
     for channel in ddses:
         for item in ["amplitude", "att", "frequency", "phase", "state"]:
             applet.add_dataset(name=f"dds_{channel}_{item}", help=None, required=False,

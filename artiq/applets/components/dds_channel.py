@@ -1,12 +1,14 @@
-from PyQt5 import QtWidgets, QtGui, QtCore
-from artiq.gui.tools import LayoutWidget
-from copy import deepcopy
 import asyncio
+
+from copy import deepcopy
+from PyQt5 import QtWidgets, QtGui, QtCore
+from sipyco import pyon
+from artiq.gui.tools import LayoutWidget
 
 
 class DDSParameters:
-    def __init__(self, client, channel, cpld, amplitude, att, frequency, phase, state):
-        self.client = client
+    def __init__(self, parent, channel, cpld, amplitude, att, frequency, phase, state):
+        self.parent = parent
         self.channel = channel
         self.cpld = cpld
         self._amplitude = amplitude
@@ -20,7 +22,7 @@ class DDSParameters:
             "file": "experiments/misc/set_urukul_parameters.py",
             "log_level": 30,
             "repo_rev": None,
-            "priority": -10
+            "priority": 0
         }
 
     @property
@@ -79,8 +81,9 @@ class DDSParameters:
         asyncio.ensure_future(self._change_dds_worker(params))
 
     async def _change_dds_worker(self, params):
-        self.rid = await self.client.submit_experiment(
-            "main", params, priority=-10)
+        self.parent.connect()
+        self.parent.cxn.artiq_control.submit_experiment(
+            "main", pyon.encode(params), 0)
 
 
 class DDSDetail(QtWidgets.QDialog):
@@ -260,7 +263,7 @@ if __name__ == "__main__":
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
     with loop:
-        client = None
+        parent = None
         channel = "urukul0_ch0"
         cpld = "urukul0"
         amplitude = 0.
@@ -268,7 +271,7 @@ if __name__ == "__main__":
         frequency = 1.
         phase = 0.
         state = True
-        p = DDSParameters(client, channel, cpld, amplitude, att, frequency, phase, state)
+        p = DDSParameters(parent, channel, cpld, amplitude, att, frequency, phase, state)
         w = DDSChannel(p)
         w.show()
         loop.run_forever()
