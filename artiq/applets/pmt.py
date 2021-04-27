@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
+import os
+import asyncio
+import labrad
+
 from PyQt5 import QtGui, QtWidgets
+from sipyco import pyon
 from artiq.gui.tools import LayoutWidget
 from artiq.applets.simple import SimpleApplet
-from labrad import connect
-from sipyco.pc_rpc import AsyncioClient as RPCClient
-import asyncio
 from config.artiq_dashboard import dashboard_config
-import os
 
 
 class PMT(QtWidgets.QDockWidget):
@@ -15,8 +16,9 @@ class PMT(QtWidgets.QDockWidget):
         QtWidgets.QDockWidget.__init__(self, "PMT")
         self.dataset_name = args.dataset
         self.ip = dashboard_config["ip"]
-        self.cxn = None
         self.rid = None
+        self.cxn = labrad.connect(
+            self.ip, password=os.environ["LABRADPASSWORD"])
         self.make_GUI()
         self.run_pmt = {
             "arguments": {},
@@ -26,12 +28,12 @@ class PMT(QtWidgets.QDockWidget):
             "repo_rev": None,
             "priority": -20
         }
-        self.get_experiment_run_status()
+        self.check_experiment_run_status()
 
     def connect(self):
-        if self.cxn is None:
-            self.cxn = connect(self.ip,
-                               password=os.environ["LABRADPASSWORD"])
+        if not self.cxn.connected:
+            self.cxn = labrad.connect(
+                self.ip, password=os.environ["LABRADPASSWORD"])
 
     def data_changed(self, data, mods):
         try:
@@ -42,14 +44,12 @@ class PMT(QtWidgets.QDockWidget):
 
     def get_mode(self):
         self.connect()
-        p = self.cxn.parametervault
-        is_differential = p.get_parameter("pmt", "differential_mode")
-        return is_differential
+        mode = self.cxn.artiq_control.get_pmt_mode_normal()
+        return mode
 
     def get_detect_time(self):
         self.connect()
-        p = self.cxn.parametervault
-        detect_time = p.get_parameter("pmt", "detect_time_ms") * 1e-3
+        detect_time = self.cxn.artiq_control.get_pmt_collect_time()
         return detect_time
 
     def make_GUI(self):
@@ -69,11 +69,11 @@ class PMT(QtWidgets.QDockWidget):
         self.combo.addItem("normal")
         self.combo.addItem("differential")
         self.combo.setFont(font)
-        is_differential = self.get_mode()
-        if is_differential:
-            self.combo.setCurrentIndex(1)
-        else:
+        is_normal = self.get_mode()
+        if is_normal:
             self.combo.setCurrentIndex(0)
+        else:
+            self.combo.setCurrentIndex(1)
         self.combo.setSizeAdjustPolicy(self.combo.AdjustToContents)
         self.combo.setFrame(False)
         self.combo.currentIndexChanged.connect(self.on_mode_changed)
@@ -103,34 +103,26 @@ class PMT(QtWidgets.QDockWidget):
         grid.addWidget(self.button, 0, 1)
 
     def on_button_clicked(self, checked):
-        asyncio.ensure_future(self._on_button_clicked(checked))
-
-    async def _on_button_clicked(self, checked):
         if checked:
-            self.rid = await self.parent.submit_experiment(
-                "main", self.run_pmt, priority=-20)
+            self.rid = self.cxn.artiq_control.submit_experiment(
+                "main", pyon.encode(self.run_pmt), -20)
             self.button.setText("stop")
         else:
             self.button.setText("start")
             if self.rid is not None:
-                await self.parent.request_terminate_experiment(self.rid)
+                self.cxn.artiq_control.request_terminate_experiment(self.rid)
                 self.rid = None
 
     def on_mode_changed(self, idx):
         self.connect()
-        p = self.cxn.parametervault
-        p.set_parameter("pmt", "differential_mode", (idx == 1))
+        self.cxn.artiq_control.set_pmt_mode_normal(idx == 0)
 
     def on_detect_time_changed(self, val):
         self.connect()
-        p = self.cxn.parametervault
-        p.set_parameter("pmt", "detect_time_ms", val * 1e3)
+        self.cxn.artiq_control.set_pmt_collect_time(val)
 
-    def get_experiment_run_status(self):
-        asyncio.ensure_future(self._get_experiment_run_status())
-
-    async def _get_experiment_run_status(self):
-        status = await self.parent.get_scheduler_status()
+    def check_experiment_run_status(self):
+        status = pyon.decode(self.cxn.artiq_control.get_status_experiment())
         running = False
         for kk in status:
             if status[kk]["expid"]["class_name"] == "_PMT":
