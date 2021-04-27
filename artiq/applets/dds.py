@@ -32,7 +32,10 @@ class DDS(QtWidgets.QDockWidget):
         self.gui_initialized = asyncio.Event()
         self.make_GUI()
 
-        ad9910_names = self.cxn.artiq_control.get_ad9910s()
+        if "dds_display_chs" in dashboard_config:
+            ad9910_names = dashboard_config["dds_display_chs"]
+        else:
+            ad9910_names = self.cxn.artiq_control.get_ad9910s()
         self.ad9910s = {}
         for name in ad9910_names:
             self.ad9910s[name] = pyon.decode(self.cxn.artiq_control.get_ad9910_info(name))
@@ -137,6 +140,8 @@ def main():
     cxn = labrad.connect(dashboard_config["ip"],
                          password=os.environ["LABRADPASSWORD"])
     ddses = cxn.artiq_control.get_ad9910s()
+    if "dds_display_chs" in dashboard_config:
+        ddses = dashboard_config["dds_display_chs"]
     cxn.disconnect()
     for channel in ddses:
         for item in ["amplitude", "att", "frequency", "phase", "state"]:
