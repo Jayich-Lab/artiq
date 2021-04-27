@@ -264,6 +264,13 @@ def main():
     import_cache.install_hook()
 
     try:
+        try:
+            from config.artiq_master import master_config
+            data_folder = master_config["data_folder"]
+        except (ImportError, KeyError):
+            logging.warning(("Cannot find master_config['data_folder'] in config.artiq_master. "
+                             "Saving data in 'results' folder"))
+            data_folder = "results"
         while True:
             obj = get_object()
             action = obj["action"]
@@ -283,7 +290,7 @@ def main():
                 device_mgr.virtual_devices["scheduler"].set_run_info(
                     rid, obj["pipeline_name"], expid, obj["priority"])
                 start_local_time = time.localtime(start_time)
-                dirname = os.path.join("results",
+                dirname = os.path.join(data_folder,
                                    time.strftime("%Y-%m-%d", start_local_time),
                                    time.strftime("%H", start_local_time))
                 os.makedirs(dirname, exist_ok=True)
