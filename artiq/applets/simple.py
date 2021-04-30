@@ -9,7 +9,6 @@ from qasync import QEventLoop, QtWidgets, QtCore
 from sipyco.sync_struct import Subscriber, process_mod
 from sipyco import pyon
 from sipyco.pipe_ipc import AsyncioChildComm
-from sipyco.pc_rpc import AsyncioClient as RPCClient
 
 from config.artiq_dashboard import dashboard_config
 
@@ -134,7 +133,6 @@ class SimpleApplet:
 
     def create_main_widget(self):
         self.main_widget = self.main_widget_class(self.args)
-        setattr(self.main_widget, "parent", self)
         if self.embed is not None:
             self.ipc.set_close_cb(self.main_widget.close)
             if os.name == "nt":
