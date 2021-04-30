@@ -28,8 +28,13 @@ def get_argparser():
     parser.add_argument("--version", action="version",
                         version="ARTIQ v{}".format(artiq_version),
                         help="print the ARTIQ version number")
+    try:
+        from config.artiq_dashboard import dashboard_config
+        ip = dashboard_config["ip"]
+    except (KeyError, ImportError):
+        ip = "::1"
     parser.add_argument(
-        "-s", "--server", default="::1",
+        "-s", "--server", default=ip,
         help="hostname or IP of the master to connect to")
     parser.add_argument(
         "--port-notify", default=3250, type=int,
