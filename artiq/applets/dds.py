@@ -65,7 +65,7 @@ class DDS(QtWidgets.QDockWidget):
     def read_parameters(self):
         self.connect()
         self.cxn.artiq_control.submit_experiment(
-            "main", pyon.encode(self.exp_read_params), -10)
+            "main", pyon.encode(self.exp_read_params), 0)
 
     async def core_connector(self):
         """If the state does not update correctly, maybe some looping is needed."""
