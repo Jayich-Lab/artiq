@@ -4,7 +4,7 @@ import os
 import asyncio
 import labrad
 
-from PyQt5 import QtGui, QtWidgets
+from PyQt5 import QtGui, QtWidgets, QtCore
 from sipyco import pyon
 from artiq.gui.tools import LayoutWidget
 from artiq.applets.simple import SimpleApplet
@@ -92,8 +92,6 @@ class DDS(QtWidgets.QDockWidget):
         return
 
     def data_changed(self, data, mods):
-        """Does not work when running as an applet."""
-        kk = 0
         if mods[0]["action"] == "setitem":
             if not self.gui_initialized.is_set():
                 if mods[0]["key"] == "misc.dds_update_time":
@@ -104,13 +102,18 @@ class DDS(QtWidgets.QDockWidget):
                         frequency = data[f"misc.{channel}.frequency"][1]
                         phase = data[f"misc.{channel}.phase"][1]
                         state = data[f"misc.{channel}.state"][1]
+
                         channel_param = DDSParameters(
                             self, channel, cpld, amp, att, frequency,
                             phase, state)
                         channel_widget = DDSChannel(channel_param, self)
                         self.channels[channel] = channel_widget
-                        self.grid.addWidget(channel_widget, kk, 0)
-                        kk += 1
+
+                        item = QtWidgets.QListWidgetItem()
+                        item.setSizeHint(channel_widget.sizeHint())
+                        self.grid.setGridSize(channel_widget.sizeHint())
+                        self.grid.addItem(item)
+                        self.grid.setItemWidget(item, channel_widget)
                     self.gui_initialized.set()
             else:
                 for mod in mods:
@@ -125,8 +128,17 @@ class DDS(QtWidgets.QDockWidget):
                             self.channels[channel].on_monitor_att_changed(value)
 
     def make_GUI(self):
+        """TO DO: QListWidget should be changed to QListView.
+
+        QListWidget does not support editable content, so bugs may happen.
+        Additional, with QListView it is possible to populate Widgets vertically first
+        and then wrap to the next column.
+        """
         font = QtGui.QFont('Arial', 15)
-        self.grid = LayoutWidget()
+        self.grid = QtWidgets.QListWidget()
+        self.grid.setFlow(QtWidgets.QListView.LeftToRight)
+        self.grid.setResizeMode(QtWidgets.QListView.Adjust)
+        self.grid.setViewMode(QtWidgets.QListView.IconMode)
         self.setWidget(self.grid)
 
     async def _read_parameters(self):
