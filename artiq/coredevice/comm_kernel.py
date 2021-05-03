@@ -348,9 +348,10 @@ class CommKernel:
         if runtime_id == b"AROR":
             gateware_version = self._read_string().split(";")[0]
             if gateware_version != software_version and not self.warned_of_mismatch:
-                logger.warning("Mismatch between gateware (%s) "
-                               "and software (%s) versions",
-                               gateware_version, software_version)
+                # Comment out the version mismatch because we operate on master.
+                #logger.warning("Mismatch between gateware (%s) "
+                #               "and software (%s) versions",
+                #               gateware_version, software_version)
                 CommKernel.warned_of_mismatch = True
 
             finished_cleanly = self._read_bool()
