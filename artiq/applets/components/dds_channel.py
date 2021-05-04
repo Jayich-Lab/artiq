@@ -78,9 +78,9 @@ class DDSParameters:
     def _change_dds(self, command):
         params = deepcopy(self._change_dds_param)
         params["arguments"]["updates"] = str(command)
-        asyncio.ensure_future(self._change_dds_worker(params))
+        self._change_dds_worker(params)
 
-    async def _change_dds_worker(self, params):
+    def _change_dds_worker(self, params):
         self.parent.connect()
         self.parent.cxn.artiq_control.submit_experiment(
             "main", pyon.encode(params), 0)
