@@ -89,7 +89,11 @@ class DDSParameters:
 class DDSDetail(QtWidgets.QDialog):
     def __init__(self, dds_parameters, parent=None):
         self.dds_parameters = dds_parameters
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint \
+            | QtCore.Qt.WindowCloseButtonHint)
+        self.setWindowTitle(dds_parameters.channel)
         self.make_GUI()
         self.initialize_connections()
 
@@ -251,7 +255,7 @@ class DDSChannel(QtWidgets.QGroupBox):
             self.show_details()
 
     def show_details(self):
-        self.details = DDSDetail(self.dds_parameters)
+        self.details = DDSDetail(self.dds_parameters, self)
         self.details.exec_()
 
 

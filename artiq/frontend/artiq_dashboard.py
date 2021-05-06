@@ -20,7 +20,7 @@ from artiq.tools import get_user_config_dir
 from artiq.gui.models import ModelSubscriber
 from artiq.gui import state, log
 from artiq.dashboard import (experiments, shortcuts, explorer,
-                             moninj, datasets, schedule, applets_ccb, parameter_editor)
+                             moninj, datasets, schedule, applets_ccb)
 
 
 def get_argparser():
@@ -179,9 +179,6 @@ def main():
                                        rpc_clients["experiment_db"])
     smgr.register(d_explorer)
 
-    d_parameters = parameter_editor.ParameterEditorDock(explorer=d_explorer)
-    smgr.register(d_parameters)
-
     d_datasets = datasets.DatasetsDock(sub_clients["datasets"],
                                        rpc_clients["dataset_db"])
     smgr.register(d_datasets)
@@ -206,7 +203,7 @@ def main():
 
     # lay out docks
     right_docks = [
-        d_explorer, d_shortcuts, d_parameters,
+        d_explorer, d_shortcuts,
         d_ttl_dds.ttl_dock, #d_ttl_dds.dds_dock, d_ttl_dds.dac_dock,
         d_datasets, d_applets
     ]

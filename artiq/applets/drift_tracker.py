@@ -20,7 +20,6 @@ class DriftTracker(QtWidgets.QDockWidget):
         self.cxn = labrad.connect(
             self.ip, password=os.environ["LABRADPASSWORD"])
         self.channels = {}
-        self.gui_initialized = asyncio.Event()
         self.drift_trackers = self.cxn.drift_tracker_server.list_drift_trackers()
         self.make_GUI()
 

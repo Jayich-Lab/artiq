@@ -63,7 +63,11 @@ class DriftTrackerParameters:
 class DriftTrackerDetail(QtWidgets.QDialog):
     def __init__(self, dt_params, parent=None):
         self.dt_params = dt_params
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint \
+            | QtCore.Qt.WindowCloseButtonHint)
+        self.setWindowTitle(dt_params.label)
         self.make_GUI()
         self.initialize_connections()
 
@@ -72,12 +76,6 @@ class DriftTrackerDetail(QtWidgets.QDialog):
         self.setLayout(grid)
         labelfont = QtGui.QFont('Arial', 10)
         spinboxfont = QtGui.QFont('Arial', 15)
-
-        label = QtWidgets.QLabel(f"Label: {self.dt_params.label}")
-        label.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                            QtWidgets.QSizePolicy.Fixed)
-        label.setFont(labelfont)
-        grid.addWidget(label, 0, 0)
 
         label = QtWidgets.QLabel("Detuning Factor")
         label.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
@@ -192,5 +190,5 @@ class DriftTrackerChannel(QtWidgets.QGroupBox):
             self.show_details()
 
     def show_details(self):
-        self.details = DriftTrackerDetail(self.dt_params)
+        self.details = DriftTrackerDetail(self.dt_params, self)
         self.details.exec_()
