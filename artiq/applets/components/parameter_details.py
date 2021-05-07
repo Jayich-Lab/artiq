@@ -148,6 +148,37 @@ class FloatDetails(ParameterDetails):
         self.gui_parameter_changed()
 
 
+class SelectionDetails(ParameterDetails):
+    def __init__(self, client, collection, name, parameter):
+        ParameterDetails.__init__(self, client, collection, name, parameter)
+        self._make_GUI()
+        self._set_GUI_values()
+
+    def _make_GUI(self):
+        grid = QtWidgets.QGridLayout()
+        self.setLayout(grid)
+        labelfont = QtGui.QFont('Arial', 10)
+
+        label = QtWidgets.QLabel("Selections")
+        label.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                            QtWidgets.QSizePolicy.Fixed)
+        label.setFont(labelfont)
+        grid.addWidget(label, 0, 0)
+
+        self.text = QtWidgets.QLineEdit()
+        self.text.setFont(labelfont)
+        grid.addWidget(self.text, 1, 0)
+
+    def _set_GUI_values(self):
+        selected, selections = self.parameter.raw_value
+        self.text.setText(str(selections))
+        self.text.editingFinished.connect(self.set_text)
+
+    def set_text(self):
+        self.parameter.set_selections(eval(self.text.text()))
+        self.gui_parameter_changed()
+
+
 class ScanDetails(ParameterDetails):
     def __init__(self, client, collection, name, parameter):
         ParameterDetails.__init__(self, client, collection, name, parameter)
@@ -267,10 +298,72 @@ class ScanDetails(ParameterDetails):
         self.gui_parameter_changed()
 
 
+class NicknameSelectionDetails(ParameterDetails):
+    def __init__(self, client, collection, name, parameter):
+        ParameterDetails.__init__(self, client, collection, name, parameter)
+        self._make_GUI()
+        self._set_GUI_values()
+
+    def _make_GUI(self):
+        grid = QtWidgets.QGridLayout()
+        self.setLayout(grid)
+        labelfont = QtGui.QFont('Arial', 10)
+
+        label = QtWidgets.QLabel("Selections")
+        label.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                            QtWidgets.QSizePolicy.Fixed)
+        label.setFont(labelfont)
+        grid.addWidget(label, 0, 0)
+
+        self.text = QtWidgets.QLineEdit()
+        self.text.setFont(labelfont)
+        grid.addWidget(self.text, 1, 0)
+
+    def _set_GUI_values(self):
+        selected, selections = self.parameter.raw_value
+        self.text.setText(str(selections))
+        self.text.editingFinished.connect(self.set_text)
+
+    def set_text(self):
+        self.parameter.set_selections(eval(self.text.text()))
+        self.gui_parameter_changed()
+
+
+class ListDetails(ParameterDetails):
+    def __init__(self, client, collection, name, parameter):
+        ParameterDetails.__init__(self, client, collection, name, parameter)
+        self._make_GUI()
+        self._set_GUI_values()
+
+    def _make_GUI(self):
+        grid = QtWidgets.QGridLayout()
+        self.setLayout(grid)
+        labelfont = QtGui.QFont('Arial', 10)
+
+        label = QtWidgets.QLabel("Value")
+        label.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                            QtWidgets.QSizePolicy.Fixed)
+        label.setFont(labelfont)
+        grid.addWidget(label, 0, 0)
+
+        self.text = QtWidgets.QLineEdit()
+        self.text.setFont(labelfont)
+        grid.addWidget(self.text, 1, 0)
+
+    def _set_GUI_values(self):
+        value = self.parameter.raw_value
+        self.text.setText(str(value))
+        self.text.editingFinished.connect(self.set_text)
+
+    def set_text(self):
+        self.parameter.set_values(eval(self.text.text()))
+        self.gui_parameter_changed()
+
+
 _type_to_class = {
     "float": FloatDetails,
-    #"selection": SelectionDetails,
+    "selection": SelectionDetails,
     "scan": ScanDetails,
-    #"nickname_selection": NicknameSelectionDetails,
-    #"list": ListDetails
+    "nickname_selection": NicknameSelectionDetails,
+    "list": ListDetails
 }

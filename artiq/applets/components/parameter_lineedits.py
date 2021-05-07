@@ -173,6 +173,7 @@ class SelectionLineEdit(QtWidgets.QComboBox, ParameterLineEdit):
     def _set_GUI_values(self):
         selected, selections = self.parameter.raw_value
         selected_idx = 0
+        self.clear()
         for kk, selection in enumerate(selections):
             if selected == selection:
                 selected_idx = kk
@@ -421,6 +422,7 @@ class NicknameSelectionLineEdit(QtWidgets.QComboBox, ParameterLineEdit):
     def _set_GUI_values(self):
         selected, selections = self.parameter.raw_value
         selected_idx = 0
+        self.clear()
         for kk, (nickname, data) in enumerate(selections):
             if selected == nickname:
                 selected_idx = kk
