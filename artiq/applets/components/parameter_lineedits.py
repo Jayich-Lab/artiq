@@ -224,6 +224,7 @@ class ScanLineEdit(ParameterLineEdit):
         layout.addWidget(label, 0, 0)
         self.start = QtWidgets.QDoubleSpinBox()
         self.start.valueChanged.connect(self.set_param_start)
+        self.start.wheelEvent = lambda event: None
         layout.addWidget(self.start, 1, 0)
 
         label = QtWidgets.QLabel("Stop")
@@ -232,6 +233,7 @@ class ScanLineEdit(ParameterLineEdit):
         layout.addWidget(label, 0, 1)
         self.stop = QtWidgets.QDoubleSpinBox()
         self.stop.valueChanged.connect(self.set_param_stop)
+        self.stop.wheelEvent = lambda event: None
         layout.addWidget(self.stop, 1, 1)
 
         label = QtWidgets.QLabel("Center")
@@ -240,6 +242,7 @@ class ScanLineEdit(ParameterLineEdit):
         layout.addWidget(label, 2, 0)
         self.center = QtWidgets.QDoubleSpinBox()
         self.center.valueChanged.connect(self.set_param_center)
+        self.center.wheelEvent = lambda event: None
         layout.addWidget(self.center, 3, 0)
 
         label = QtWidgets.QLabel("Span")
@@ -248,6 +251,7 @@ class ScanLineEdit(ParameterLineEdit):
         layout.addWidget(label, 2, 1)
         self.span = QtWidgets.QDoubleSpinBox()
         self.span.valueChanged.connect(self.set_param_span)
+        self.span.wheelEvent = lambda event: None
         layout.addWidget(self.span, 3, 1)
 
         label = QtWidgets.QLabel("Resolution")
@@ -256,6 +260,7 @@ class ScanLineEdit(ParameterLineEdit):
         layout.addWidget(label, 0, 2)
         self.resolution = QtWidgets.QDoubleSpinBox()
         self.resolution.valueChanged.connect(self.set_param_resolution)
+        self.resolution.wheelEvent = lambda event: None
         layout.addWidget(self.resolution, 1, 2)
 
         label = QtWidgets.QLabel("Steps")
@@ -264,6 +269,7 @@ class ScanLineEdit(ParameterLineEdit):
         layout.addWidget(label, 0, 3)
         self.steps = QtWidgets.QSpinBox()
         self.steps.valueChanged.connect(self.set_param_steps)
+        self.steps.wheelEvent = lambda event: None
         layout.addWidget(self.steps, 1, 3)
 
         self.random = QtWidgets.QCheckBox("Randomize")

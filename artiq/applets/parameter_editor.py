@@ -89,10 +89,10 @@ class ParameterEditor(QtWidgets.QDockWidget):
             self.show_details()
 
     def show_details(self):
-        sitem = self.table.selectedItems()[0]
-        name = sitem.text(0)
-        collection = sitem.parent().text(0)
         try:
+            sitem = self.table.selectedItems()[0]
+            name = sitem.text(0)
+            collection = sitem.parent().text(0)
             details = ParameterDetails.from_parameter(
                 self, collection, name, self.params[collection][name])
             details.exec_()
