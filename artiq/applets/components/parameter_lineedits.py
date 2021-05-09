@@ -101,9 +101,9 @@ class FloatLineEdit(QtWidgets.QDoubleSpinBox, ParameterLineEdit):
 
     def _set_GUI_values(self):
         value, (min, max), digits, unit, scale = self.parameter.raw_value
-        self.setValue(value)
         self.setMinimum(min)
         self.setMaximum(max)
+        self.setValue(value)
         self.setDecimals(digits)
         self.setSingleStep(10**(-digits))
         if unit != "":
@@ -136,9 +136,9 @@ class IntLineEdit(QtWidgets.QSpinBox, ParameterLineEdit):
         QtWidgets.QSpinBox.__init__(self)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setKeyboardTracking(False)
-        self.setValue(self.param_value)
         self.setMinimum(-2147483648)
         self.setMaximum(2147483647)
+        self.setValue(self.param_value)
         self.valueChanged.connect(self.set_param_value)
         layout = QtWidgets.QVBoxLayout()
         layout.setAlignment(QtCore.Qt.AlignVCenter)
@@ -281,35 +281,35 @@ class ScanLineEdit(ParameterLineEdit):
     def _set_GUI_values(self):
         (start, stop, steps), (min, max), random, digits, unit, scale = self.parameter.raw_value
 
-        self.start.setValue(start)
         self.start.setMinimum(min)
         self.start.setMaximum(max)
+        self.start.setValue(start)
         self._set_double_spinbox(self.start, digits, unit)
 
-        self.stop.setValue(stop)
         self.stop.setMinimum(min)
         self.stop.setMaximum(max)
+        self.stop.setValue(stop)
         self._set_double_spinbox(self.stop, digits, unit)
 
-        self.center.setValue((start + stop) / 2.)
         self.center.setMinimum(min)
         self.center.setMaximum(max)
+        self.center.setValue((start + stop) / 2.)
         self._set_double_spinbox(self.center, digits, unit)
 
-        self.span.setValue(abs(stop - start))
         self.span.setMinimum(min - max)
         self.span.setMaximum(max - min)
+        self.span.setValue(abs(stop - start))
         self._set_double_spinbox(self.span, digits, unit)
 
-        self.resolution.setValue(abs(stop - start) / (steps - 1))
         self.resolution.setMinimum(0.)
         self.resolution.setMaximum(max - min)
+        self.resolution.setValue(abs(stop - start) / (steps - 1))
         self._set_double_spinbox(self.resolution, digits, unit)
 
-        self.steps.setValue(steps)
         self.steps.setKeyboardTracking(False)
         self.steps.setMinimum(2)
         self.steps.setMaximum(1000000)
+        self.steps.setValue(steps)
 
         if random:
             self.random.setCheckState(QtCore.Qt.Checked)
