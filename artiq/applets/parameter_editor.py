@@ -81,10 +81,12 @@ class ParameterEditor(QtWidgets.QDockWidget):
         menu = QtWidgets.QMenu()
         reload_action = menu.addAction("Reload registry")
         details_action = menu.addAction("Details")
-        action =menu.exec_(self.table.viewport().mapToGlobal(position))
+        action = menu.exec_(self.table.viewport().mapToGlobal(position))
         if action == reload_action:
             self.connect()
             self.cxn.parameter_database.load_registry()
+            self.load_all_parameters()
+            self.make_GUI()
         elif action == details_action:
             self.show_details()
 
